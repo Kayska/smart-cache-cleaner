@@ -1,0 +1,32 @@
+# 智能缓存清理器
+
+Windows 上的缓存文件清理工具：按闲置天数找出缓存文件，勾选确认后分批移入回收站（可还原），支持自定义背景图片。
+
+- 界面：pywebview (WebView2) + HTML/CSS/JS，毛玻璃、极光背景、自定义图片背景
+- 后端：Python + ctypes 调用 Windows 回收站接口，每批 10 个并逐个验证
+- 安全：排除 `node_modules`、`.git`、`__pycache__` 等项目/依赖目录，只处理文件；恢复时从回收站还原，清空回收站后才会真正释放空间
+
+## 使用
+
+直接运行 `release/智能缓存清理器.exe`（未签名，首次运行可能被 SmartScreen 拦截）。需要 Windows 11 自带的 WebView2 运行时。
+
+1. 左侧勾选要扫描的位置，设置闲置天数（默认 7 天）
+2. 点「开始扫描」，结果中默认勾选高、中建议的文件，可逐项调整
+3. 点「清理到回收站」，在确认弹窗里再次确认
+4. 确认无误后清空回收站以真正释放磁盘空间
+
+设置保存在 `%APPDATA%\SmartCacheCleaner\`，自定义背景图也存在这里。
+
+## 从源码构建
+
+```bash
+pip install -r requirements.txt
+pyinstaller build.spec
+```
+
+产物在 `dist/智能缓存清理器.exe`。直接开发调试可运行 `python app.py`。
+
+## 测试
+
+- `test_ui.py`：启动窗口并真实扫描，截图到 `shots/`（注意：会截到屏幕区域，机器有人在用时不要运行）
+- `test_exe.py`：验证打包后的 exe 能加载页面并正常退出。设 `SCC_DIAG=<日志路径>` 可输出页面自检结果
