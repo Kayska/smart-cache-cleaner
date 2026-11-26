@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+build/
+dist/
+shots/
+.venv/
+*.egg-info/
+.gh_token

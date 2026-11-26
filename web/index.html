@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="dark">
+  <title>智能缓存清理器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 背景：默认极光流动，设置图片后显示图片 + 暗色蒙版 -->
+  <div class="bg" aria-hidden="true">
+    <div class="aurora"><i></i><i></i><i></i><span class="grain"></span></div>
+    <img id="bgImg" alt="">
+    <div class="veil"></div>
+  </div>
+  <div class="glare" aria-hidden="true"></div>
+
+  <main class="shell">
+    <header class="topbar rise" style="--d:0">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            <path d="M6.5 7l.8 11a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-11"/>
+            <path d="M12 4.5V2.8a.8.8 0 0 1 .8-.8H15"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>智能缓存清理器</h1>
+          <p>先列清单 · 勾选确认 · 回收站可还原</p>
+        </div>
+      </div>
+      <div class="drives" id="drives"></div>
+      <div class="topbar-actions">
+        <button class="btn ghost" id="bgBtn" title="选择一张本地图片作为背景">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-9 8"/></svg>
+          自定义背景
+        </button>
+        <button class="btn ghost icon-only" id="bgClear" title="恢复默认极光背景" aria-label="恢复默认背景">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="stats">
+      <article class="stat glass rise" style="--d:1">
+        <span class="label">可清理体积</span>
+        <strong id="statTotal">0 B</strong>
+        <span class="sub" id="statCount">还没有扫描结果</span>
+      </article>
+      <article class="stat glass rise" style="--d:2">
+        <span class="label">已勾选</span>
+        <strong id="statSel">0 B</strong>
+        <span class="sub" id="statSelN">0 个文件</span>
+        <div class="meter"><i id="meterBar"></i></div>
+      </article>
+      <article class="stat glass rise" style="--d:3">
+        <span class="label">本次已移入回收站</span>
+        <strong id="statFreed">0 B</strong>
+        <span class="sub" id="statDisk">—</span>
+      </article>
+    </section>
+
+    <section class="layout">
+      <aside class="panel glass scope rise" style="--d:2">
+        <div class="panel-head">
+          <h2>扫描位置</h2>
+          <span class="hint">只扫你勾选的地方</span>
+        </div>
+
+        <div class="field">
+          <span class="label">闲置超过</span>
+          <div class="segmented" id="days" role="group" aria-label="闲置天数">
+            <button data-days="3">3</button>
+            <button data-days="7">7</button>
+            <button data-days="14">14</button>
+            <button data-days="30">30</button>
+            <input id="daysInput" type="number" min="1" max="365" placeholder="自定" title="输入自定义天数" aria-label="自定义天数">
+          </div>
+          <span class="unit">天</span>
+        </div>
+        <p class="note">最近还在读写的文件会被自动跳过。</p>
+
+        <ul class="chips" id="presets"></ul>
+
+        <div class="custom">
+          <div class="custom-head">
+            <span class="label">自定义文件夹</span>
+            <button class="btn ghost sm" id="addFolder">＋ 添加</button>
+          </div>
+          <ul class="folders" id="customList"></ul>
+          <p class="note" id="customEmpty">添加工作目录后，只按缓存特征识别文件，不会碰源码和依赖。</p>
+        </div>
+
+        <label class="switch">
+          <input type="checkbox" id="prune">
+          <span class="track"></span>
+          <span>同时移除被清空的空文件夹</span>
+        </label>
+
+        <button class="btn primary wide" id="scanBtn"><span class="btn-text">开始扫描</span></button>
+      </aside>
+
+      <section class="panel glass results rise" style="--d:3">
+        <div class="scanbar" id="scanbar" aria-hidden="true"><i></i></div>
+        <div class="panel-head">
+          <h2>扫描结果 <span class="badge" id="resCount">0</span></h2>
+          <div class="tools">
+            <label class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>
+              <input id="q" type="search" placeholder="筛选文件名或路径" autocomplete="off">
+            </label>
+            <div class="btn-group">
+              <button data-sel="all">全选</button>
+              <button data-sel="none">不选</button>
+              <button data-sel="invert">反选</button>
+              <button data-sel="high">仅高建议</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap" id="tableWrap">
+          <table id="table">
+            <thead>
+              <tr>
+                <th class="c-check"><label class="cb"><input type="checkbox" id="headCheck"><i></i></label></th>
+                <th class="sortable c-file" data-sort="path">文件</th>
+                <th class="sortable c-level" data-sort="level">建议</th>
+                <th class="c-cat">类别</th>
+                <th class="sortable c-size" data-sort="size">大小</th>
+                <th class="sortable c-time" data-sort="mtime">最后修改</th>
+                <th class="c-go"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <div class="empty" id="empty">
+            <div class="empty-art" aria-hidden="true">
+              <svg viewBox="0 0 120 90" fill="none">
+                <ellipse cx="60" cy="78" rx="38" ry="6" fill="rgba(200,255,77,.10)"/>
+                <path d="M30 30h60l-6 40a8 8 0 0 1-8 7H44a8 8 0 0 1-8-7z" stroke="rgba(255,255,255,.45)" stroke-width="1.6"/>
+                <path d="M48 30v-6a12 12 0 0 1 24 0v6" stroke="rgba(255,255,255,.45)" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M52 44l20 16M72 44L52 60" stroke="#c8ff4d" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3 id="emptyTitle">还没有扫描结果</h3>
+            <p id="emptyText">点击左侧「开始扫描」，列出超过闲置天数没再使用的缓存文件。</p>
+            <button class="btn primary" id="emptyScan">开始扫描</button>
+          </div>
+        </div>
+
+        <footer class="dock">
+          <div class="dock-sum">
+            <strong id="selSize">0 B</strong>
+            <span id="selN">已勾选 0 个文件</span>
+          </div>
+          <div class="dock-actions">
+            <button class="btn ghost" id="binBtn" title="在资源管理器中打开回收站">打开回收站</button>
+            <button class="btn danger" id="cleanBtn" disabled><span class="btn-text">清理到回收站</span></button>
+          </div>
+        </footer>
+      </section>
+    </section>
+
+    <footer class="ticker glass rise" style="--d:4">
+      <span class="dot" id="tickerDot"></span>
+      <span class="ticker-text" id="tickerText">正在启动…</span>
+      <button class="link" id="logToggle" aria-expanded="false">操作日志 <span class="badge" id="logCount">0</span></button>
+    </footer>
+    <section class="log glass" id="logPanel" hidden>
+      <div class="log-head"><span>操作日志</span><button class="link" id="logClear">清空</button></div>
+      <ol id="logList"></ol>
+    </section>
+  </main>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card glass" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">确认清理</h3>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="modalCancel">取消</button>
+        <button class="btn danger" id="modalOk">移入回收站</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 收集前端错误，便于排查
+    window.__errs = [];
+    addEventListener('error', (e) => window.__errs.push(`${e.message} @${e.lineno}`));
+    addEventListener('unhandledrejection', (e) => window.__errs.push(`promise: ${e.reason}`));
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
