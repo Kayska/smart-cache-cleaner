@@ -13,7 +13,7 @@ _CANDIDATES = [
     os.path.join(HERE, "..", "output", "智能缓存清理器.exe"),
 ]
 EXE = next((p for p in _CANDIDATES if os.path.exists(p)), _CANDIDATES[0])
-TITLE = "智能缓存清理器 v2.0"
+TITLE = "智能缓存清理器 v2.1"
 DIAG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shots", "exe_diag.log")
 os.makedirs(os.path.dirname(DIAG), exist_ok=True)
 if os.path.exists(DIAG):
@@ -56,5 +56,5 @@ print("EXIT_CODE", proc.poll())
 if proc.poll() is None:
     proc.kill()
 print("WINDOW_GONE", not user32.FindWindowW(None, TITLE))
-ok = bool(info and '"cards":3' in info and '"ready":true' in info and '"errs":[]' in info)
+ok = bool(info and '"cards":3' in info and '"swatches":5' in info and '"ready":true' in info and '"errs":[]' in info)
 print("EXE_TEST", "OK" if ok else "FAIL")

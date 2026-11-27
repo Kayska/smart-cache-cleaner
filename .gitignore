@@ -6,3 +6,6 @@ shots/
 .venv/
 *.egg-info/
 .gh_token
+
+# WebView2 在 exe 旁生成的用户数据目录（仅异常环境下出现）
+*.WebView2/

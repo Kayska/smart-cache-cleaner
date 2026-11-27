@@ -16,7 +16,7 @@
     logPanel: $('#logPanel'), logList: $('#logList'), logToggle: $('#logToggle'), logClear: $('#logClear'), logCount: $('#logCount'),
     toasts: $('#toasts'), modal: $('#modal'), modalTitle: $('#modalTitle'), modalBody: $('#modalBody'),
     modalOk: $('#modalOk'), modalCancel: $('#modalCancel'),
-    bgBtn: $('#bgBtn'), bgClear: $('#bgClear'), bgImg: $('#bgImg'), drives: $('#drives'),
+    bgBtn: $('#bgBtn'), bgClear: $('#bgClear'), bgImg: $('#bgImg'), drives: $('#drives'), swatches: $('#swatches'),
   };
 
   const S = {
@@ -29,6 +29,7 @@
     cleaning: false,
     autoCheck: true,
     idleDays: 7,
+    theme: 'aurora',
     prune: true,
     presets: [],
     custom: [],
@@ -295,10 +296,45 @@
 
   async function persist() {
     await call('save_settings', {
-      idle_days: S.idleDays, prune_empty: S.prune, custom: S.custom,
+      idle_days: S.idleDays, prune_empty: S.prune, custom: S.custom, theme: S.theme,
       presets: Object.fromEntries(S.presets.map((p) => [p.key, p.on])),
     });
   }
+
+  // ---------- 主题 ----------
+  const THEMES = [
+    { id: 'aurora', name: '极光 · 荧光绿', color: '#c8ff4d', bg: '#141a10' },
+    { id: 'violet', name: '紫罗兰 · 幻夜紫', color: '#c4a5ff', bg: '#171226' },
+    { id: 'glacier', name: '雾蓝 · 冰川青', color: '#6ee7ff', bg: '#0b1b23' },
+    { id: 'ember', name: '暖阳 · 落日橙', color: '#ffb37b', bg: '#221510' },
+    { id: 'daylight', name: '晨曦 · 浅色', color: '#7cb518', bg: '#eef1f4' },
+  ];
+
+  function applyTheme(id) {
+    if (!THEMES.some((t) => t.id === id)) id = 'aurora';
+    S.theme = id;
+    document.body.classList.add('theming');
+    document.body.dataset.theme = id;
+    clearTimeout(applyTheme._t);
+    applyTheme._t = setTimeout(() => document.body.classList.remove('theming'), 420);
+    document.querySelectorAll('.swatch').forEach((b) => {
+      const on = b.dataset.theme === id;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  }
+
+  function renderSwatches() {
+    el.swatches.innerHTML = THEMES.map((t) =>
+      `<button class="swatch" data-theme="${t.id}" title="${t.name}" aria-label="${t.name}" aria-pressed="false" style="background:${t.bg}"><i style="background:linear-gradient(145deg, ${t.color}, ${t.bg})"></i></button>`).join('');
+  }
+
+  el.swatches.onclick = async (e) => {
+    const b = e.target.closest('.swatch');
+    if (!b || b.dataset.theme === S.theme) return;
+    applyTheme(b.dataset.theme);
+    await call('save_settings', { theme: S.theme });
+  };
 
   // ---------- 扫描 / 清理 ----------
   function setScanning(on) {
@@ -470,6 +506,9 @@
       S.custom = st.custom || [];
       S.idleDays = st.idle_days || 7;
       S.prune = !!st.prune_empty;
+      S.theme = st.theme || 'aurora';
+      renderSwatches();
+      applyTheme(S.theme);
       el.prune.checked = S.prune;
       renderDays(); renderPresets(); renderCustom(); renderDrives(st.disk); applyBg(st.bg);
       refreshStats();

@@ -4,7 +4,7 @@ import os
 
 from PyInstaller.utils.hooks import collect_all
 
-datas = [(os.path.join(SPECPATH, 'web'), 'web')]
+datas = [(os.path.join(SPECPATH, 'web'), 'web'), (os.path.join(SPECPATH, 'assets'), 'assets')]
 binaries = []
 hiddenimports = ['webview.platforms.winforms', 'webview.platforms.egl']
 
@@ -37,6 +37,7 @@ exe = EXE(
     a.datas,
     [],
     name='智能缓存清理器',
+    icon=os.path.join(SPECPATH, 'assets', 'icon.ico'),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

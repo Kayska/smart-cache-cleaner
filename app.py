@@ -20,7 +20,8 @@ import webview
 import core
 
 APP_NAME = "智能缓存清理器"
-APP_VER = "2.0"
+APP_VER = "2.1"
+THEMES = ("aurora", "violet", "glacier", "ember", "daylight")
 
 
 def base_dir():
@@ -73,6 +74,7 @@ class Api:
         self._custom = []
         self._idle_days = 7
         self._prune_empty = True
+        self._theme = "aurora"
         self.load_settings()
 
     # ---------- 基础设施 ----------
@@ -125,6 +127,8 @@ class Api:
         try:
             self._idle_days = max(1, int(s.get("idle_days", 7)))
             self._prune_empty = bool(s.get("prune_empty", True))
+            if s.get("theme") in THEMES:
+                self._theme = s["theme"]
             self._custom = [p for p in s.get("custom_folders", []) if isinstance(p, str)]
             saved = s.get("presets", {})
             for p in self._presets:
@@ -140,6 +144,8 @@ class Api:
                 self._idle_days = max(1, int(data["idle_days"]))
             if "prune_empty" in data:
                 self._prune_empty = bool(data["prune_empty"])
+            if data.get("theme") in THEMES:
+                self._theme = data["theme"]
             if "custom" in data:
                 self._custom = [str(p) for p in data["custom"]]
             if "presets" in data:
@@ -157,6 +163,7 @@ class Api:
         return {
             "idle_days": self._idle_days,
             "prune_empty": self._prune_empty,
+            "theme": self._theme,
             "custom_folders": self._custom,
             "presets": {p["key"]: p["on"] for p in self._presets},
         }
@@ -225,6 +232,7 @@ class Api:
             "custom": self._custom,
             "idle_days": self._idle_days,
             "prune_empty": self._prune_empty,
+            "theme": self._theme,
             "bg": self._bg_data_url(),
             "disk": disk_info(),
             "scanning": self._scanning,
@@ -396,7 +404,17 @@ class Api:
         return {"ok": True}
 
 
+def _sanitize_webview_env():
+    """WebView2 若看到值为空/无效的 WEBVIEW2_USER_DATA_FOLDER，会退回到"在 exe 旁边建数据文件夹"，
+    这样清理工具自己反而在用户目录留下缓存。清掉无效值，让 pywebview 使用随用随删的私有目录。"""
+    key = "WEBVIEW2_USER_DATA_FOLDER"
+    value = os.environ.get(key)
+    if key in os.environ and (not value or not os.path.isabs(value or "")):
+        del os.environ[key]
+
+
 def main():
+    _sanitize_webview_env()
     api = Api()
     window = webview.create_window(
         f"{APP_NAME} v{APP_VER}", WEB_INDEX, js_api=api, width=1240, height=860, min_size=(980, 700),
@@ -404,6 +422,15 @@ def main():
     )
 
     def on_loaded():
+        # 窗口/任务栏图标
+        try:
+            from System.Drawing import Icon
+            ico = os.path.join(base_dir(), "assets", "icon.ico")
+            if os.path.exists(ico):
+                window.native.Icon = Icon(ico)
+        except Exception:
+            pass
+
         # 自检：设置环境变量 SCC_DIAG=<日志路径> 时，把页面是否真的渲染出来写到该文件（不截屏）
         target = os.environ.get("SCC_DIAG")
         if not target:
@@ -414,6 +441,8 @@ def main():
                 info = window.evaluate_js(
                     "JSON.stringify({title: document.title, cards: document.querySelectorAll('.stat').length,"
                     " chips: document.querySelectorAll('.chip').length,"
+                    " swatches: document.querySelectorAll('.swatch').length,"
+                    " theme: document.body.dataset.theme,"
                     " ready: !!(window.pywebview && window.pywebview.api"
                     " && typeof window.pywebview.api.get_state === 'function'),"
                     " ticker: (document.querySelector('#tickerText') || {}).textContent,"
